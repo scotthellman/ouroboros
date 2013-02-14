@@ -1,0 +1,3 @@
+[submodule "hsvgrid"]
+	path = hsvgrid
+	url = https://github.com/scutellaris/hsvgrid.git
