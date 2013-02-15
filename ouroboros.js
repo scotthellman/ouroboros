@@ -1,4 +1,5 @@
 var timestep_length = 100;
+var game_board;
 
 jQuery(document).ready(function(){
 	$(document).mousemove(function(e){
@@ -13,10 +14,18 @@ jQuery(document).ready(function(){
 
 
 function init() {
+	var test_board = "#####\n# # #\n#   #\n#   #\n#####";
 	resize();
 	canvas = document.getElementById("game_canvas");
-	HSVGrid.initGrid(canvas,10)
-
+	HSVGrid.initGrid(canvas,10);
+	game_board = [];
+	for(var i = 0; i < 10; i++){
+		game_board[i] = []
+		for(var j = 0; j < 10; j++){
+			game_board[i][j] = 0;
+		}
+	}
+	updateBoardFromString(game_board,test_board,0,2);
 
 	return setInterval(gameTimestep, timestep_length);
 }
@@ -46,10 +55,26 @@ function resize(){
 	game_area.style.fontSize = (new_width / 800) + 'em';
 }
 
+var boardmap = {
+	"#" : 1,
+	" " : 0
+}
+
+function updateBoardFromString(board,str,x,y){
+	var lines = str.split("\n");
+	for(var i = 0; i < lines.length; i++){
+		var line = lines[i];
+		for(var j = 0; j < line.length; j++){
+			var character = line[j];
+			board[i+x][j+y] = boardmap[character];
+		}
+	}
+}
+
 function gameTimestep(){
 	for(var i = 0; i < 10; i++){
 		for(var j = 0; j < 10; j++){
-			HSVGrid.alterGrid(360* Math.random(),i/10,j/10,i,j);
+			HSVGrid.alterGrid(360* Math.random(),1,game_board[i][j],i,j);
 		}
 	}
 	HSVGrid.drawGridToCanvas();
