@@ -4,10 +4,66 @@ var game_board;
 var game_objects = {};
 var obj_id = 0;
 
+function generateObjectID(){
+	return obj_id++;
+}
+
+function GameBoard(width,height){
+	this.board = []
+	this.location_map = {};
+	this.width = width;
+	this.height = height;
+	for(var i = 0; i < width; i++){
+		this.board[i] = [];
+		for(var j = 0; j < height; j++){
+			this.board[i][j] = [];
+		}
+	}
+}
+
+GameBoard.prototype.removeObject = function(obj_id){
+	var pos = this.location_map[obj_id];
+	var index = $.inArray(this.board[pos[0]][pos[1]],obj_id);
+	this.board[pos[0]][pos[1]].splice(index,1);
+	delete this.location_map[obj_id];
+}
+
+GameBoard.prototype.addObject = function(obj_id,x,y){
+	this.location_map[obj_id] = [x,y];
+	this.board[x][y].push(obj_id);
+}
+
+GameBoard.prototype.move = function(obj_id,x,y){
+	this.removeObject(obj_id);
+	this.addObject(obj_id,x,y);
+}
+
+GameBoard.prototype.drawToGrid = function(){
+	for(var i = 0; i < this.width; i++){
+		for(var j = 0; j < this.height; j++){
+			if(this.board[i][j].length > 0){
+				var obj = game_objects[this.board[i][j][0]];
+				HSVGrid.alterGrid(obj.color[0],obj.color[1],obj.color[2],i,j);
+				HSVGrid.drawGridToCanvas();
+			}
+		}
+	}
+}
+
 function GameObject(h,s,v,x,y,updater){
 	this.color = [h,s,v];
-	this.pos = [x,y];
 	this.updater = updater;
+	this.id = generateObjectID();
+	game_objects[this.id] = this;
+	game_board.addObject(this.id,x,y);
+}
+
+GameObject.prototype.move = function(new_x,new_y){
+	game_board.move(this.id,new_x,new_y);
+}
+
+GameObject.prototype.getPosition = function(board){
+	return board.location_map[this.id];
 }
 
 jQuery(document).ready(function(){
@@ -42,25 +98,20 @@ function init() {
 	resize();
 	canvas = document.getElementById("game_canvas");
 	HSVGrid.initGrid(canvas,10);
-	game_board = [];
+	game_board = new GameBoard(10,10);
 	for(var i = 0; i < 10; i++){
-		game_board[i] = [];
 		for(var j = 0; j < 10; j++){
-			game_board[i][j] = [];
 			HSVGrid.alterGrid(0,0,0,i,j);
 		}
 	}
 	updateBoardFromString(test_board,0,0);
 
-	// addObject(new GameObject(0,0.5,1,3,2,function(){this.pos[0]++;}))
+	new GameObject(0,0.5,1,1,1,function(){
+		var pos = this.getPosition(game_board);
+		this.move(pos[0]+1,pos[1]);
+	})
 
 	return setInterval(gameTimestep, timestep_length);
-}
-
-function addObject(obj){
-	game_objects[obj_id] = obj;
-	game_board[obj.pos[0]][obj.pos[1]].push(obj);
-	obj_id++;
 }
 
 function resize(){
@@ -99,7 +150,7 @@ function updateBoardFromString(str,x,y){
 		var line = lines[i];
 		for(var j = 0; j < line.length; j++){
 			if(line[j] == "#"){
-				addObject(new GameObject(0,0,1,i,j,null));
+				new GameObject(0,0,1,i,j,null);
 			}
 		}
 	}
@@ -123,22 +174,12 @@ function handleCollisions(){
 	}
 }
 
-function drawToGrid(){
-	for(var i = 0; i < game_board.length; i++){
-		for(var j = 0; j < game_board[i].length; j++){
-			if(game_board[i][j].length > 0){
-				var obj = game_board[i][j][0];
-				HSVGrid.alterGrid(obj.color[0],obj.color[1],obj.color[2],i,j);
-			}
-		}
-	}
-}
 
 
 function gameTimestep(){
 	updateObjects();
 	handleCollisions();
-	drawToGrid();
+	game_board.drawToGrid();
 	// for(var i = 0; i < 10; i++){
 	// 	for(var j = 0; j < 10; j++){
 	// 		HSVGrid.alterGrid(360* Math.random(),1,game_board[i][j],j,i);
