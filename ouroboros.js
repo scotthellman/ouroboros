@@ -21,6 +21,15 @@ function GameBoard(width,height){
 	}
 }
 
+var PlayerDirection = {
+    UP : [0,-1],
+    DOWN : [0,1],
+    RIGHT : [1,0],
+    LEFT : [-1,0]
+}
+
+var inputDirection = PlayerDirection.UP; 
+
 GameBoard.prototype.removeObject = function(obj_id){
 	var pos = this.location_map[obj_id];
 	var index = $.inArray(this.board[pos[0]][pos[1]],obj_id);
@@ -106,25 +115,18 @@ GameObject.prototype.getPosition = function(board){
 jQuery(document).ready(function(){
 	$(document).keydown(function(e){
 		var key = (e.keyCode ? e.keyCode : e.charCode);
+		console.log(key);
 		if(key == 37){
-			if(players[player_id].direction != PlayerDirection.DOWN){
-				inputDirection = PlayerDirection.UP;
-			}
+			inputDirection = PlayerDirection.LEFT;
 		}
 		else if(key == 38){
-			if(players[player_id].direction != PlayerDirection.RIGHT){
-				inputDirection = PlayerDirection.LEFT;
-			}
+			inputDirection = PlayerDirection.UP;
 		}
 		else if(key == 39){
-			if(players[player_id].direction != PlayerDirection.UP){
-				inputDirection = PlayerDirection.DOWN;
-			}
+			inputDirection = PlayerDirection.RIGHT;
 		}
 		else if(key == 40){
-			if(players[player_id].direction != PlayerDirection.LEFT){
-				inputDirection = PlayerDirection.RIGHT;
-			}
+			inputDirection = PlayerDirection.DOWN;
 		}
 	});
 	$(window).resize(resize);
@@ -146,7 +148,7 @@ function init() {
 	var player = new GameObject(0,0.5,1,1,1);
 	player.updater = function(){
 		var pos = this.getPosition(game_board);
-		this.move(pos[0]+1,pos[1]);
+		this.move(pos[0]+inputDirection[0],pos[1]+inputDirection[1]);
 	};
 
 	return setInterval(gameTimestep, timestep_length);
