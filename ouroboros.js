@@ -50,16 +50,40 @@ GameBoard.prototype.drawToGrid = function(){
 	}
 }
 
-function GameObject(h,s,v,x,y,updater){
+GameBoard.prototype.handleCollisions = function(){
+	for(var i = 0; i < game_board.length; i++){
+		for(var j = 0; j < game_board[i].length; j++){
+			for(var obj_index = 0; obj_index < this.board[i][j].length; obj_index++){
+				game_objects[this.board[i][j][obj_index]].handleCollision(this.board[i][j]);
+			}
+		}
+	}
+}
+
+function GameObject(h,s,v,x,y){
 	this.color = [h,s,v];
-	this.updater = updater;
 	this.id = generateObjectID();
+	this.pos = [x,y];
+	this.old_pos = [x,y];
 	game_objects[this.id] = this;
 	game_board.addObject(this.id,x,y);
+
+	this.updater = null;
+	this.customCollisionHandler = null;
+}
+
+GameObject.prototype.handleCollision = function(objects){
+	if(this.customCollisionHandler){
+		this.customCollisionHandler(objects);
+	}
 }
 
 GameObject.prototype.move = function(new_x,new_y){
 	game_board.move(this.id,new_x,new_y);
+}
+
+GameObject.prototype.undoMove = function(){
+	game_board.move(this.id,this.old_pos[0],this.old_pos[1]);
 }
 
 GameObject.prototype.getPosition = function(board){
@@ -106,10 +130,11 @@ function init() {
 	}
 	updateBoardFromString(test_board,0,0);
 
-	new GameObject(0,0.5,1,1,1,function(){
+	var player = new GameObject(0,0.5,1,1,1);
+	player.updater = function(){
 		var pos = this.getPosition(game_board);
 		this.move(pos[0]+1,pos[1]);
-	})
+	};
 
 	return setInterval(gameTimestep, timestep_length);
 }
@@ -167,18 +192,12 @@ function updateObjects(){
 	}
 }
 
-function handleCollisions(){
-	for(var i = 0; i < game_board.length; i++){
-		for(var j = 0; j < game_board[i].length; j++){
-		}
-	}
-}
 
 
 
 function gameTimestep(){
 	updateObjects();
-	handleCollisions();
+	game_board.handleCollisions();
 	game_board.drawToGrid();
 	// for(var i = 0; i < 10; i++){
 	// 	for(var j = 0; j < 10; j++){
