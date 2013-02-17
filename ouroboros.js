@@ -8,6 +8,7 @@ function generateObjectID(){
 	return obj_id++;
 }
 
+
 function GameBoard(width,height){
 	this.board = []
 	this.location_map = {};
@@ -81,7 +82,6 @@ function GameObject(h,s,v,x,y){
 	this.pos = [x,y];
 	this.old_pos = [x,y];
 	game_objects[this.id] = this;
-	game_board.addObject(this.id,x,y);
 
 	this.updater = null;
 	this.customCollisionHandler = null;
@@ -150,6 +150,7 @@ function init() {
 		var pos = this.getPosition(game_board);
 		this.move(pos[0]+inputDirection[0],pos[1]+inputDirection[1]);
 	};
+	game_board.addObject(player.id,player.pos[0],player.pos[1]);
 
 	return setInterval(gameTimestep, timestep_length);
 }
@@ -194,6 +195,7 @@ function updateBoardFromString(str,x,y){
 				wall.customCollisionHandler = function(obj){
 					obj.undoMove();
 				}
+				game_board.addObject(wall.id,i,j);
 			}
 		}
 	}
