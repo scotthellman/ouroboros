@@ -46,15 +46,21 @@ GameBoard.prototype.drawToGrid = function(){
 				HSVGrid.alterGrid(obj.color[0],obj.color[1],obj.color[2],i,j);
 				HSVGrid.drawGridToCanvas();
 			}
+			else{
+				HSVGrid.alterGrid(0,0,0,i,j);
+				HSVGrid.drawGridToCanvas();
+			}
 		}
 	}
 }
 
 GameBoard.prototype.handleCollisions = function(){
-	for(var i = 0; i < game_board.length; i++){
-		for(var j = 0; j < game_board[i].length; j++){
+	for(var i = 0; i < this.board.length; i++){
+		for(var j = 0; j < this.board[i].length; j++){
 			for(var obj_index = 0; obj_index < this.board[i][j].length; obj_index++){
-				game_objects[this.board[i][j][obj_index]].handleCollision(this.board[i][j]);
+				if(this.board[i][j].length > 1){
+					game_objects[this.board[i][j][obj_index]].handleCollision(this.board[i][j]);
+				}
 			}
 		}
 	}
@@ -74,15 +80,22 @@ function GameObject(h,s,v,x,y){
 
 GameObject.prototype.handleCollision = function(objects){
 	if(this.customCollisionHandler){
-		this.customCollisionHandler(objects);
+		for(var i = 0; i < objects.length; i++){
+			if(objects[i] != this.id){
+				this.customCollisionHandler(game_objects[objects[i]]);
+			}
+		}
 	}
 }
 
 GameObject.prototype.move = function(new_x,new_y){
+	this.old_pos = this.pos;
+	this.pos = [new_x,new_y];
 	game_board.move(this.id,new_x,new_y);
 }
 
 GameObject.prototype.undoMove = function(){
+	this.pos = this.old_pos;
 	game_board.move(this.id,this.old_pos[0],this.old_pos[1]);
 }
 
@@ -175,7 +188,10 @@ function updateBoardFromString(str,x,y){
 		var line = lines[i];
 		for(var j = 0; j < line.length; j++){
 			if(line[j] == "#"){
-				new GameObject(0,0,1,i,j,null);
+				var wall = new GameObject(0,0,1,i,j,null);
+				wall.customCollisionHandler = function(obj){
+					obj.undoMove();
+				}
 			}
 		}
 	}
@@ -191,9 +207,6 @@ function updateObjects(){
 		}
 	}
 }
-
-
-
 
 function gameTimestep(){
 	updateObjects();
