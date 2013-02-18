@@ -41,8 +41,8 @@ function generateRandomBoard(width,height){
 		while(rooms.length == i){
 			var x = valid_xs[Math.floor(Math.random()*valid_xs.length)];
 			var y = valid_ys[Math.floor(Math.random()*valid_ys.length)];
-
 			var size = Math.min(width-x-1,height-y-1,Math.floor(width/12+Math.random()*width/10));
+
 			// if(!collidesWithRooms(x,y,size,rooms)){
 			rooms.push([x,y,size]);
 			valid_xs.splice(x,size);
@@ -58,9 +58,24 @@ function generateRandomBoard(width,height){
 	}
 
 	//randomly add edges until it's fully connected
-	// while(!isGraphConnected(adj_matrix)){
-	// 	adj_matrix[Math.floor(Math.random()*rooms.length)][Math.floor(Math.random()*rooms.length)] = 1;
-	// }
+	var count = 0;
+	while(!isGraphConnected(adj_matrix)){
+		count++;
+		var x_index = Math.floor(Math.random()*rooms.length);
+		var possible = [];
+		for(var i = 0; i < adj_matrix.length; i++){
+			if(x_index != i && adj_matrix[x_index][i] == 0){
+				possible.push(i);
+			}
+		}
+		var y_index = possible[Math.floor(Math.random() * possible.length)]; 
+		console.log(y_index,x_index);
+		adj_matrix[x_index][y_index] = 1;
+		adj_matrix[y_index][x_index] = 1;
+		if(count > 10){
+			break;
+		}
+	}
 
 	//and construct
 	var board_sketch = [];
@@ -103,24 +118,26 @@ function generateRandomBoard(width,height){
 }
 
 function isGraphConnected(adj_matrix){
-	visited = [];
+	var visited = [];
 	for(var i = 0; i < adj_matrix.length; i++){
 		visited[i] = false;
 	}
-	stack = [0];
-	count = 0;
+	var stack = [0];
+	var count = 0;
+	visited[0] = true;
 	while(stack.length > 0){
 		count++;
 		if(count > 6){
 			return true;
 		}
 		var current = stack.pop();
-		visited[current] = true;
 		var adjacent = adj_matrix[current];
 		for(var i = 0; i < adjacent.length; i++){
-			var next = adjacent[i];
-			if(!visited[next]){
-				stack.push(next);
+			if(adjacent[i]){
+				if(!visited[i]){
+					stack.push(i);
+					visited[i] = true;
+				}
 			}
 		}
 	}
