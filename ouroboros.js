@@ -4,6 +4,8 @@ var game_board;
 var game_objects = {};
 var obj_id = 0;
 
+var player_spawn;
+
 function generateObjectID(){
 	return obj_id++;
 }
@@ -37,11 +39,12 @@ function generateRandomBoard(width,height){
 		valid_ys.push(i);
 	}
 
-	for(var i = 0; i < 4; i++){
+	for(var i = 0; i < 7; i++){
 		while(rooms.length == i){
 			var x = valid_xs[Math.floor(Math.random()*valid_xs.length)];
 			var y = valid_ys[Math.floor(Math.random()*valid_ys.length)];
 			var size = Math.min(width-x-1,height-y-1,Math.floor(width/12+Math.random()*width/10));
+
 
 			// if(!collidesWithRooms(x,y,size,rooms)){
 			rooms.push([x,y,size]);
@@ -50,6 +53,7 @@ function generateRandomBoard(width,height){
 			// }
 		}
 	}
+	player_spawn = [rooms[0][0],rooms[0][1]];
 	for(var i = 0; i < rooms.length; i++){
 		adj_matrix[i] = [];
 		for(var j = 0; j < rooms.length; j++){
@@ -302,12 +306,13 @@ function init() {
 	HSVGrid.initGrid(canvas,100);
 	game_board = generateRandomBoard(100,100);
 
-	// var player = new GameObject(0,0.5,1,1,1);
-	// player.updater = function(){
-	// 	var pos = this.getPosition(game_board);
-	// 	this.move(pos[0]+inputDirection[0],pos[1]+inputDirection[1]);
-	// };
-	// game_board.addObject(player.id,player.pos[0],player.pos[1]);
+	var player = new GameObject(0,0.5,1,player_spawn[0],player_spawn[1]);
+	player.updater = function(){
+		var pos = this.getPosition(game_board);
+		console.log(pos);
+		this.move(pos[0]+inputDirection[0],pos[1]+inputDirection[1]);
+	};
+	game_board.addObject(player.id,player.pos[0],player.pos[1]);
 
 	return setInterval(gameTimestep, timestep_length);
 }
