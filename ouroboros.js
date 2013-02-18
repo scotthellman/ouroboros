@@ -69,10 +69,9 @@ function generateRandomBoard(width,height){
 			}
 		}
 		var y_index = possible[Math.floor(Math.random() * possible.length)]; 
-		console.log(y_index,x_index);
 		adj_matrix[x_index][y_index] = 1;
 		adj_matrix[y_index][x_index] = 1;
-		if(count > 10){
+		if(count > adj_matrix.length * adj_matrix.length){
 			break;
 		}
 	}
@@ -91,7 +90,6 @@ function generateRandomBoard(width,height){
 		var x = rooms[i][0];
 		var y = rooms[i][1];
 		var size = rooms[i][2];
-		console.log(x,y,size);
 		for(var j = 0; j < size; j++){
 			for(var k = 0; k < size; k++){
 				board_sketch[x+j][y+k] = 0;
@@ -100,6 +98,31 @@ function generateRandomBoard(width,height){
 	}
 
 	//add edges
+	for(var i = 0; i < adj_matrix.length; i++){
+		for(var j = i; j < adj_matrix.length; j++){
+			console.log(i,j);
+			if(adj_matrix[i][j]){
+				var start_x = Math.floor(rooms[i][0] + rooms[i][2]/2);
+				var end_x = Math.floor(rooms[j][0] + rooms[j][2]/2);
+				var start_y = Math.floor(rooms[i][1] + rooms[i][2]/2);
+				var end_y = Math.floor(rooms[j][1] + rooms[j][2]/2);
+				var shift_x = (start_x - end_x)/Math.abs(start_x - end_x);
+				var shift_y = (start_y - end_y)/Math.abs(start_y - end_y);
+				// if(Math.random() > 0.5){ 
+				var jaunted = 0;
+				for(var k = 0; k < Math.abs(start_x - end_x); k++){
+					board_sketch[start_x - k*shift_x][start_y - jaunted * shift_y] = 0;
+					if(jaunted == 0 && k > Math.abs(start_x - end_x)/2){
+						for(;jaunted <= Math.abs(start_y - end_y); jaunted++){
+							board_sketch[start_x - k*shift_x][start_y - jaunted * shift_y] = 0;
+						}
+						jaunted--;
+					}
+				}
+				// }
+			}
+		}
+	}
 
 	//convert to a real board
 	for(var i = 0; i < width; i++){
@@ -127,7 +150,7 @@ function isGraphConnected(adj_matrix){
 	visited[0] = true;
 	while(stack.length > 0){
 		count++;
-		if(count > 6){
+		if(count > adj_matrix.length + 5){
 			return true;
 		}
 		var current = stack.pop();
