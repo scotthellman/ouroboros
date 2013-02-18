@@ -8,6 +8,128 @@ function generateObjectID(){
 	return obj_id++;
 }
 
+function collidesWithRooms(x,y,size,rooms){
+	var padding = 5;
+	for(var i = 0; i < rooms.length; i++){
+		var x_dist = Math.abs(x-rooms[i][0]) - padding;
+		if(x_dist < size || x_dist < rooms[i][2]){
+			return true;
+		}
+		var y_dist = Math.abs(y-rooms[i][1]) - padding;
+		if(y_dist < size || y_dist < rooms[i][2]){
+			return true;
+		}
+	}
+	return false;
+}
+
+
+function generateRandomBoard(width,height){
+	var new_board = new GameBoard(width,height);
+	var rooms = [];
+	var adj_matrix = [];
+	var valid_xs = [];
+	var valid_ys = [];
+	for(var i = 1; i < width-5; i++){
+		valid_xs[i] = i;
+	}
+	for(var i = 1; i < height-5; i++){
+		valid_ys[i] = i;
+	}
+
+	for(var i = 0; i < 4; i++){
+		while(rooms.length == i){
+			var x = valid_xs[Math.floor(Math.random()*valid_xs.length)];
+			var y = valid_ys[Math.floor(Math.random()*valid_xs.length)];
+			var size = Math.min(width-x-1,height-y-1,Math.floor(width/12+Math.random()*width/10));
+			// if(!collidesWithRooms(x,y,size,rooms)){
+			rooms.push([x,y,size]);
+			valid_xs.splice(x,size);
+			valid_ys.splice(y,size);
+			// }
+		}
+	}
+	for(var i = 0; i < rooms.length; i++){
+		adj_matrix[i] = [];
+		for(var j = 0; j < rooms.length; j++){
+			adj_matrix[i][j] = 0;
+		}
+	}
+
+	//randomly add edges until it's fully connected
+	// while(!isGraphConnected(adj_matrix)){
+	// 	adj_matrix[Math.floor(Math.random()*rooms.length)][Math.floor(Math.random()*rooms.length)] = 1;
+	// }
+
+	//and construct
+	var board_sketch = [];
+	for(var i = 0; i < width; i++){
+		board_sketch[i] = [];
+		for(var j = 0; j < height; j++){
+			board_sketch[i][j] = 1;
+		}
+	}
+
+	//add rooms
+	for(var i = 0; i < rooms.length; i++){
+		var x = rooms[i][0];
+		var y = rooms[i][1];
+		var size = rooms[i][2];
+		console.log(x,y,size);
+		for(var j = 0; j < size; j++){
+			for(var k = 0; k < size; k++){
+				board_sketch[x+j][y+k] = 0;
+			}
+		}
+	}
+
+	//add edges
+
+	//convert to a real board
+	for(var i = 0; i < width; i++){
+		for(var j = 0; j < width; j++){
+			if(board_sketch[i][j]==1){
+				var wall = new GameObject(0,0,1,i,j,null);
+				wall.customCollisionHandler = function(obj){
+					obj.undoMove();
+				}
+				new_board.addObject(wall.id,i,j);
+			}
+		}
+	}
+
+	return new_board;
+}
+
+function isGraphConnected(adj_matrix){
+	visited = [];
+	for(var i = 0; i < adj_matrix.length; i++){
+		visited[i] = false;
+	}
+	stack = [0];
+	count = 0;
+	while(stack.length > 0){
+		count++;
+		if(count > 6){
+			return true;
+		}
+		var current = stack.pop();
+		visited[current] = true;
+		var adjacent = adj_matrix[current];
+		for(var i = 0; i < adjacent.length; i++){
+			var next = adjacent[i];
+			if(!visited[next]){
+				stack.push(next);
+			}
+		}
+	}
+	for(var i = 0; i < visited.length; i++){
+		if(!visited[i]){
+			return false;
+		}
+	}
+	return true;
+}
 
 function GameBoard(width,height){
 	this.board = []
@@ -136,21 +258,15 @@ function init() {
 	var test_board = "#########\n# #  #  #\n# #     #\n# #     #\n#       #\n######  #\n#    #  #\n#       #\n#########\n";
 	resize();
 	canvas = document.getElementById("game_canvas");
-	HSVGrid.initGrid(canvas,10);
-	game_board = new GameBoard(10,10);
-	for(var i = 0; i < 10; i++){
-		for(var j = 0; j < 10; j++){
-			HSVGrid.alterGrid(0,0,0,i,j);
-		}
-	}
-	updateBoardFromString(test_board,0,0);
+	HSVGrid.initGrid(canvas,100);
+	game_board = generateRandomBoard(100,100);
 
-	var player = new GameObject(0,0.5,1,1,1);
-	player.updater = function(){
-		var pos = this.getPosition(game_board);
-		this.move(pos[0]+inputDirection[0],pos[1]+inputDirection[1]);
-	};
-	game_board.addObject(player.id,player.pos[0],player.pos[1]);
+	// var player = new GameObject(0,0.5,1,1,1);
+	// player.updater = function(){
+	// 	var pos = this.getPosition(game_board);
+	// 	this.move(pos[0]+inputDirection[0],pos[1]+inputDirection[1]);
+	// };
+	// game_board.addObject(player.id,player.pos[0],player.pos[1]);
 
 	return setInterval(gameTimestep, timestep_length);
 }
