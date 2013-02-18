@@ -30,17 +30,18 @@ function generateRandomBoard(width,height){
 	var adj_matrix = [];
 	var valid_xs = [];
 	var valid_ys = [];
-	for(var i = 1; i < width-5; i++){
-		valid_xs[i] = i;
+	for(var i = 5; i < width-5; i++){
+		valid_xs.push(i);
 	}
-	for(var i = 1; i < height-5; i++){
-		valid_ys[i] = i;
+	for(var i = 5; i < height-5; i++){
+		valid_ys.push(i);
 	}
 
 	for(var i = 0; i < 4; i++){
 		while(rooms.length == i){
 			var x = valid_xs[Math.floor(Math.random()*valid_xs.length)];
-			var y = valid_ys[Math.floor(Math.random()*valid_xs.length)];
+			var y = valid_ys[Math.floor(Math.random()*valid_ys.length)];
+
 			var size = Math.min(width-x-1,height-y-1,Math.floor(width/12+Math.random()*width/10));
 			// if(!collidesWithRooms(x,y,size,rooms)){
 			rooms.push([x,y,size]);
