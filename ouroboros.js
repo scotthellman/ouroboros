@@ -284,7 +284,7 @@ var inputDirection = PlayerDirection.UP;
 
 GameBoard.prototype.removeObject = function(obj_id){
 	var pos = this.location_map[obj_id];
-	var index = $.inArray(this.board[pos[0]][pos[1]],obj_id);
+	var index = $.inArray(obj_id,this.board[pos[0]][pos[1]]);
 	this.board[pos[0]][pos[1]].splice(index,1);
 	delete this.location_map[obj_id];
 }
@@ -303,6 +303,9 @@ GameBoard.prototype.drawToGrid = function(){
 	for(var i = 0; i < this.width; i++){
 		for(var j = 0; j < this.height; j++){
 			if(this.board[i][j].length > 0){
+				if(this.board[i][j][0]==undefined){
+					console.log('sigh');
+				}
 				var obj = game_objects[this.board[i][j][0]];
 				HSVGrid.alterGrid(obj.color[0],obj.color[1],obj.color[2],i,j);
 				HSVGrid.drawGridToCanvas();
@@ -334,7 +337,7 @@ function GameObject(h,s,v,x,y){
 	this.old_pos = [x,y];
 	game_objects[this.id] = this;
 
-	this.updater = null;
+	this.updater = function(){};
 	this.customCollisionHandler = null;
 }
 
@@ -383,6 +386,22 @@ jQuery(document).ready(function(){
 	$(window).resize(resize);
 });
 
+function spawnTrail(pos){
+	var lightwall = new GameObject(0,1,0.7,pos[0],pos[1]);
+	lightwall.lifetime = 100;
+	lightwall.updater = function(){
+		lightwall.lifetime--;
+		if(lightwall.lifetime <= 0){
+			game_board.removeObject(lightwall.id);
+			delete game_objects[lightwall.id];
+		}
+	}
+	lightwall.customCollisionHandler = function(obj){
+		obj.undoMove();
+	}
+	game_board.addObject(lightwall.id,pos[0],pos[1]);
+}
+
 function init() {
 	var test_board = "#########\n# #  #  #\n# #     #\n# #     #\n#       #\n######  #\n#    #  #\n#       #\n#########\n";
 	resize();
@@ -394,6 +413,7 @@ function init() {
 	player.updater = function(){
 		var pos = this.getPosition(game_board);
 		this.move(pos[0]+inputDirection[0],pos[1]+inputDirection[1]);
+		spawnTrail(this.old_pos);
 	};
 	game_board.addObject(player.id,player.pos[0],player.pos[1]);
 
