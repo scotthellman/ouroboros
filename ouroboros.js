@@ -25,6 +25,50 @@ function collidesWithRooms(x,y,size,rooms){
 	return false;
 }
 
+function getEnergyReducingMovement(room,rooms){
+	var delta = [0,0];
+	var x = room[0];
+	var y = room[1];
+	for(var j = 0; j < rooms.length; j++){
+		if(x == rooms[j][0] && y == rooms[j][1]){
+			//hit ourselves
+			continue;
+		}
+		var diff_x = rooms[j][0] - x;
+		var diff_y = rooms[j][1] - y;
+		var magnitude = Math.sqrt(diff_x*diff_x + diff_y*diff_y);
+		var direction = Math.atan2(diff_y,diff_x);
+		console.log(Math.cos(direction));
+		console.log(Math.sin(direction));
+
+		var dx = (20/magnitude) * Math.cos(direction);
+		var dy = (20/magnitude) * Math.sin(direction);
+		delta[0] -= dx;
+		delta[1] -= dy;
+	}
+	return delta;
+}
+
+function minimizeEnergy(rooms){
+	var temperature = 0.75;
+	for(var i = 0; i < 20; i++){
+		var deltas = [];
+		for(var j = 0; j < rooms.length; j++){
+			deltas.push(getEnergyReducingMovement(rooms[j],rooms));
+		}
+		for(var j = 0; j < rooms.length; j++){
+			var noise = 10*(0.5-Math.random())*Math.pow(temperature,i);
+			var old_x = rooms[j][0];
+			var old_y = rooms[j][1];
+			var new_x = old_x + Math.pow(temperature,i) * (deltas[j][0] + noise);
+			var new_y = old_y + Math.pow(temperature,i) * (deltas[j][1] + noise);
+			//TODO fix hardcoding of board size
+			rooms[j][0] = Math.min(100-rooms[j][2]-1,Math.max(1,Math.floor(new_x)));
+			rooms[j][1] = Math.min(100-rooms[j][2]-1,Math.max(1,Math.floor(new_y)));
+		}
+	}
+}
+
 
 function generateRandomBoard(width,height){
 	var new_board = new GameBoard(width,height);
@@ -39,7 +83,7 @@ function generateRandomBoard(width,height){
 		valid_ys.push(i);
 	}
 
-	for(var i = 0; i < 7; i++){
+	for(var i = 0; i < 10; i++){
 		while(rooms.length == i){
 			var x = valid_xs[Math.floor(Math.random()*valid_xs.length)];
 			var y = valid_ys[Math.floor(Math.random()*valid_ys.length)];
@@ -53,6 +97,9 @@ function generateRandomBoard(width,height){
 			// }
 		}
 	}
+
+	minimizeEnergy(rooms);
+
 	player_spawn = [rooms[0][0],rooms[0][1]];
 	for(var i = 0; i < rooms.length; i++){
 		adj_matrix[i] = [];
