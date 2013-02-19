@@ -49,6 +49,34 @@ function getEnergyReducingMovement(room,rooms){
 	return delta;
 }
 
+function dilate(sketch){
+	var new_sketch = [];
+	for(var i = 0; i < sketch.length; i++){
+		new_sketch[i] = [];
+		for(var j = 0; j < sketch[i].length; j++){
+			new_sketch[i][j] = sketch[i][j];
+		}
+	}
+	for(var i = 0; i < sketch.length; i++){
+		for(var j = 0; j < sketch[i].length; j++){
+			var new_value = sketch[i][j];
+			for(var k = Math.max(0,i-1); k < Math.min(sketch.length-1,i+2); k++){
+				for(var h = Math.max(0,j-1); h < Math.min(sketch[0].length-1,j+2); h++){
+					if(sketch[k][h] == 0){
+						new_value = 0;
+						break;
+					}
+				}
+				if(new_value == 0){
+					break;
+				}
+			}
+			new_sketch[i][j] = new_value;
+		}
+	}
+	return new_sketch;
+}
+
 function minimizeEnergy(rooms){
 	var temperature = 0.75;
 	for(var i = 0; i < 20; i++){
@@ -175,10 +203,12 @@ function generateRandomBoard(width,height){
 		}
 	}
 
+	board_sketch = dilate(board_sketch);
+
 	//convert to a real board
 	for(var i = 0; i < width; i++){
 		for(var j = 0; j < width; j++){
-			if(board_sketch[i][j]==1){
+			if(i == 0 || j == 0 || i == width-1 || j == height-1 || board_sketch[i][j]==1){
 				var wall = new GameObject(0,0,1,i,j,null);
 				wall.customCollisionHandler = function(obj){
 					obj.undoMove();
