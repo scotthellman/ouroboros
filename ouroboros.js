@@ -1,4 +1,4 @@
-var timestep_length = 100;
+var timestep_length = 50;
 var game_board;
 
 var game_objects = {};
@@ -38,8 +38,6 @@ function getEnergyReducingMovement(room,rooms){
 		var diff_y = rooms[j][1] - y;
 		var magnitude = Math.sqrt(diff_x*diff_x + diff_y*diff_y);
 		var direction = Math.atan2(diff_y,diff_x);
-		console.log(Math.cos(direction));
-		console.log(Math.sin(direction));
 
 		var dx = (20/magnitude) * Math.cos(direction);
 		var dy = (20/magnitude) * Math.sin(direction);
@@ -128,6 +126,7 @@ function generateRandomBoard(width,height){
 
 	minimizeEnergy(rooms);
 
+
 	player_spawn = [rooms[0][0],rooms[0][1]];
 	for(var i = 0; i < rooms.length; i++){
 		adj_matrix[i] = [];
@@ -179,7 +178,6 @@ function generateRandomBoard(width,height){
 	//add edges
 	for(var i = 0; i < adj_matrix.length; i++){
 		for(var j = i; j < adj_matrix.length; j++){
-			console.log(i,j);
 			if(adj_matrix[i][j]){
 				var start_x = Math.floor(rooms[i][0] + rooms[i][2]/2);
 				var end_x = Math.floor(rooms[j][0] + rooms[j][2]/2);
@@ -187,11 +185,18 @@ function generateRandomBoard(width,height){
 				var end_y = Math.floor(rooms[j][1] + rooms[j][2]/2);
 				var shift_x = (start_x - end_x)/Math.abs(start_x - end_x);
 				var shift_y = (start_y - end_y)/Math.abs(start_y - end_y);
+				if(isNaN(shift_x)){
+					shift_x = 0;
+				}
+				if(isNaN(shift_y)){
+					shift_y = 0;
+				}
 				// if(Math.random() > 0.5){ 
 				var jaunted = 0;
-				for(var k = 0; k < Math.abs(start_x - end_x); k++){
+				//max to force one iteration, for drawing straight up
+				for(var k = 0; k < Math.max(1,Math.abs(start_x - end_x)); k++){
 					board_sketch[start_x - k*shift_x][start_y - jaunted * shift_y] = 0;
-					if(jaunted == 0 && k > Math.abs(start_x - end_x)/2){
+					if(shift_x == 0 || jaunted == 0 && k >= Math.abs(start_x - end_x)/2){
 						for(;jaunted <= Math.abs(start_y - end_y); jaunted++){
 							board_sketch[start_x - k*shift_x][start_y - jaunted * shift_y] = 0;
 						}
@@ -202,6 +207,8 @@ function generateRandomBoard(width,height){
 			}
 		}
 	}
+
+	console.log(adj_matrix);
 
 	board_sketch = dilate(board_sketch);
 
@@ -386,7 +393,6 @@ function init() {
 	var player = new GameObject(0,0.5,1,player_spawn[0],player_spawn[1]);
 	player.updater = function(){
 		var pos = this.getPosition(game_board);
-		console.log(pos);
 		this.move(pos[0]+inputDirection[0],pos[1]+inputDirection[1]);
 	};
 	game_board.addObject(player.id,player.pos[0],player.pos[1]);
