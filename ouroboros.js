@@ -4,6 +4,7 @@ var game_board;
 var game_objects = {};
 var obj_id = 0;
 
+
 var player_spawn;
 
 function generateObjectID(){
@@ -280,7 +281,7 @@ var PlayerDirection = {
     LEFT : [-1,0]
 }
 
-var inputDirection = PlayerDirection.UP; 
+var inputDirection = PlayerDirection.DOWN; 
 
 GameBoard.prototype.removeObject = function(obj_id){
 	var pos = this.location_map[obj_id];
@@ -330,6 +331,15 @@ GameBoard.prototype.handleCollisions = function(){
 	}
 }
 
+GameBoard.prototype.isPermeable = function(x,y){
+	for(var i = 0; i < this.board[x][y].length; i++){
+		if(this.board[x][y].permeable != true){
+			return false;
+		}
+	}
+	return true;
+}
+
 function GameObject(h,s,v,x,y){
 	this.color = [h,s,v];
 	this.id = generateObjectID();
@@ -371,16 +381,24 @@ jQuery(document).ready(function(){
 		var key = (e.keyCode ? e.keyCode : e.charCode);
 		console.log(key);
 		if(key == 37){
-			inputDirection = PlayerDirection.LEFT;
+			if(inputDirection != PlayerDirection.RIGHT){
+				inputDirection = PlayerDirection.LEFT;
+			}
 		}
 		else if(key == 38){
-			inputDirection = PlayerDirection.UP;
+			if(inputDirection != PlayerDirection.DOWN){
+				inputDirection = PlayerDirection.UP;
+			}
 		}
 		else if(key == 39){
-			inputDirection = PlayerDirection.RIGHT;
+			if(inputDirection != PlayerDirection.LEFT){
+				inputDirection = PlayerDirection.RIGHT;
+			}
 		}
 		else if(key == 40){
-			inputDirection = PlayerDirection.DOWN;
+			if(inputDirection != PlayerDirection.UP){
+				inputDirection = PlayerDirection.DOWN;
+			}
 		}
 	});
 	$(window).resize(resize);
@@ -389,6 +407,8 @@ jQuery(document).ready(function(){
 function spawnTrail(pos){
 	var lightwall = new GameObject(0,1,0.7,pos[0],pos[1]);
 	lightwall.lifetime = 100;
+	lightwall.constricts = true;
+	lightwall.previous_tail = null;
 	lightwall.updater = function(){
 		lightwall.lifetime--;
 		if(lightwall.lifetime <= 0){
@@ -396,10 +416,84 @@ function spawnTrail(pos){
 			delete game_objects[lightwall.id];
 		}
 	}
+	lightwall.getBend = function(){
+		//needs to be at least 2 back
+		var count = 0;
+		if(this.cached_bend == undefined){
+			var current = this;
+			while(current != null){
+				count++;
+				if(current.direction[0] != this.direction[0] || current.direction[1] != this.direction[1]){
+					//found our turn
+					break;
+				}
+				current = current.previous_tail;
+			}
+			if(count <= 2 || current.direction == this.direction || current == null){
+				this.cached_bend = null;
+			}
+			else{
+				this.cached_bend = current.direction;
+			}
+		}
+		return this.cached_bend;
+	}
 	lightwall.customCollisionHandler = function(obj){
-		obj.undoMove();
+		// return;
+		if(obj.constricts){
+			//folow trail backwards, floodfill in the direction of the first turn
+			//but we only want to do this with the one that's farther along
+			if(obj.lifetime){
+				if(obj.lifetime > this.lifetime){
+					return;
+				}
+				if(obj.direction[0] == 0 && this.direction[0] == 0){
+					return;
+				}
+				if(obj.direction[1] == 0 && this.direction[1] == 0){
+					return;
+				}
+			}
+			//floodfill
+			var current = this.getBend();
+			if(current == null){
+				return;
+			}
+			var fill = [];
+			var positions = [[this.pos[0]-this.direction[0] - current[0],
+			this.pos[1]-this.direction[1] - current[1]]];
+			var seen = {};
+			while(positions.length > 0){
+				var to_fill = positions.pop(); 
+				fill.push(to_fill);
+				seen[to_fill] = true;
+				for(key in PlayerDirection){
+					if(PlayerDirection.hasOwnProperty(key)){
+						var direction = PlayerDirection[key];
+						var candidate = [to_fill[0] + direction[0], to_fill[1] + direction[1]];
+						if(seen[candidate] == true){
+							continue
+						}
+						seen[candidate] = true;
+						if(!game_board.isPermeable(candidate[0],candidate[1])){
+							continue
+						}
+						positions.push(candidate);
+					}
+				}
+			}
+			for(var i = 0; i < fill.length; i++){
+				var damage_field = new GameObject(0,0.5,0.5,fill[i][0],fill[i][1]);
+				damage_field.updater = function(){
+					game_board.removeObject(this.id);
+					delete game_objects[this.id];
+				}
+				game_board.addObject(damage_field.id,damage_field.pos[0],damage_field.pos[1]);
+			}
+		}
 	}
 	game_board.addObject(lightwall.id,pos[0],pos[1]);
+	return lightwall;
 }
 
 function init() {
@@ -410,14 +504,50 @@ function init() {
 	game_board = generateRandomBoard(100,100);
 
 	var player = new GameObject(0,0.5,1,player_spawn[0],player_spawn[1]);
+	player.tail_length = 25;
+	player.previous_tail = null;
 	player.updater = function(){
 		var pos = this.getPosition(game_board);
+		var dontspawn = false;
+		if(pos[0] == this.old_pos[0] && pos[1] == this.old_pos[1]){
+			dontspawn = true;
+		}
 		this.move(pos[0]+inputDirection[0],pos[1]+inputDirection[1]);
-		spawnTrail(this.old_pos);
+		if(dontspawn) return;
+		var tail = spawnTrail(this.old_pos,this.tail_length);
+		tail.direction = [inputDirection[0],inputDirection[1]];
+		tail.previous_tail = this.previous_tail;
+		this.previous_tail = tail;
 	};
 	game_board.addObject(player.id,player.pos[0],player.pos[1]);
 
 	return setInterval(gameTimestep, timestep_length);
+}
+
+function CircularArray(length){
+	this.max_length = length;
+	this.length = 0;
+	this.array = [];
+	this.index = 0;
+}
+
+CircularArray.prototype.push = function(obj){
+	this.array[this.index] = obj;
+	if(this.length < this.max_length){
+		this.length++;
+	}
+	this.index++;
+	if(this.index >= this.max_length){
+		this.index = 0;
+	}
+}
+
+CircularArray.prototype.get = function(i){
+	var true_index = i;
+	if(this.length == this.max_length){
+		true_index += this.index;
+	}
+	return this.array[true_index];
 }
 
 function resize(){
@@ -488,3 +618,5 @@ function gameTimestep(){
 	// }
 	HSVGrid.drawGridToCanvas();
 }
+
+
