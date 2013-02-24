@@ -544,8 +544,8 @@ game = function(){
 		game_board = BoardCreator.generateRandomBoard(100,100);
 
 		var player = new GameObject(0,0.5,1,player_spawn[0],player_spawn[1]);
-		player.tail_length = 25;
 		player.previous_tail = null;
+		player.player_controlled = true;
 		player.updater = function(){
 			var pos = this.getPosition(game_board);
 			var dontspawn = false;
@@ -573,18 +573,23 @@ game = function(){
 
 		//damage field
 		var fields = [];
-		// for(var i = -2; i < 3; i++){
-		// 	for(var j = -2; j < 3; j++){
-		// 		if((i != 0 || j != 0) && game_board.isPermeable(x+i,y+j)){
-		// 			var field = new GameObject(120,0.5,1,x+i,y+j);
-		// 			field.permeable = true;
-		// 			field.updater = function(){
-		// 			}
-		// 			game_board.addObject(field.id,field.pos[0],field.pos[1]);
-		// 			fields.push(field);
-		// 		}
-		// 	}
-		// }
+		for(var i = -2; i < 3; i++){
+			for(var j = -2; j < 3; j++){
+				if((i != 0 || j != 0) && game_board.isPermeable(x+i,y+j)){
+					var field = new GameObject(120,0.5,1,x+i,y+j);
+					field.permeable = true;
+					field.updater = function(){
+					}
+					field.customCollisionHandler = function(obj){
+						if(obj.player_controlled){
+							tail_lifetime--;
+						}
+					}
+					game_board.addObject(field.id,field.pos[0],field.pos[1]);
+					fields.push(field);
+				}
+			}
+		}
 
 		enemy.updater = function(){
 			console.log(game_board.board[x][y].length);
