@@ -37,11 +37,14 @@ game = function(){
 	});
 
 
+	var tail_lifetime = 50;
 	var timestep_length = 50;
 	var game_board;
 
 	var game_objects = {};
 	var obj_id = 0;
+
+	var valid_spawns = [];
 
 
 	var player_spawn;
@@ -229,6 +232,9 @@ game = function(){
 						}
 						new_board.addObject(wall.id,i,j);
 					}
+					else{
+						valid_spawns.push([i,j]);
+					}
 				}
 			}
 			return new_board;
@@ -377,7 +383,7 @@ game = function(){
 
 	GameBoard.prototype.isPermeable = function(x,y){
 		for(var i = 0; i < this.board[x][y].length; i++){
-			if(this.board[x][y].permeable != true){
+			if(game_objects[this.board[x][y][i]].permeable != true){
 				return false;
 			}
 		}
@@ -423,12 +429,12 @@ game = function(){
 
 	function spawnTrail(pos){
 		var lightwall = new GameObject(0,1,0.7,pos[0],pos[1]);
-		lightwall.lifetime = 100;
+		lightwall.elapsed = 0;
 		lightwall.constricts = true;
 		lightwall.previous_tail = null;
 		lightwall.updater = function(){
-			lightwall.lifetime--;
-			if(lightwall.lifetime <= 0){
+			lightwall.elapsed += 1;
+			if(tail_lifetime - lightwall.elapsed <= 0){
 				game_board.removeObject(lightwall.id);
 				delete game_objects[lightwall.id];
 			}
@@ -460,8 +466,8 @@ game = function(){
 			if(obj.constricts){
 				//folow trail backwards, floodfill in the direction of the first turn
 				//but we only want to do this with the one that's farther along
-				if(obj.lifetime){
-					if(obj.lifetime > this.lifetime){
+				if(obj.hasOwnProperty('elapsed')){
+					if(obj.elapsed < this.elapsed){
 						return;
 					}
 					if(obj.direction[0] == 0 && this.direction[0] == 0){
@@ -485,6 +491,11 @@ game = function(){
 					damage_field.updater = function(){
 						game_board.removeObject(this.id);
 						delete game_objects[this.id];
+					}
+					damage_field.customCollisionHandler = function(obj){
+						if(obj.health){
+							obj.health--;
+						}
 					}
 					game_board.addObject(damage_field.id,damage_field.pos[0],damage_field.pos[1]);
 				}
@@ -545,7 +556,49 @@ game = function(){
 		};
 		game_board.addObject(player.id,player.pos[0],player.pos[1]);
 
+		createEnemy(player_spawn[0]+4,player_spawn[1]+4);
+
 		return setInterval(gameTimestep, timestep_length);
+	}
+
+	function createEnemy(x,y){
+		var enemy = new GameObject(120,1,1,x,y);
+		enemy.health = 10;
+		enemy.permeable = true;
+
+		//damage field
+		var fields = [];
+		for(var i = -2; i < 3; i++){
+			for(var j = -2; j < 3; j++){
+				if((i != 0 || j != 0) && game_board.isPermeable(x+i,y+j)){
+					var field = new GameObject(120,0.5,1,x+i,y+j);
+					field.permeable = true;
+					field.updater = function(){
+					}
+					game_board.addObject(field.id,field.pos[0],field.pos[1]);
+					fields.push(field);
+				}
+			}
+		}
+
+		enemy.updater = function(){
+			this.color[2] = this.health/10;
+			if(this.health <= 0){
+				for(var i = 0; i < fields.length; i++){
+					game_board.removeObject(fields[i].id);
+					delete game_objects[fields[i].id];
+				}
+				game_board.removeObject(this.id);
+				delete game_objects[this.id];
+				tail_lifetime += 5;
+				var next = valid_spawns[Math.floor(Math.random()*valid_spawns.length)];
+				createEnemy(next[0],next[1]);
+				next = valid_spawns[Math.floor(Math.random()*valid_spawns.length)];
+				createEnemy(next[0],next[1]);
+			}
+		}
+
+		game_board.addObject(enemy.id,x,y);
 	}
 
 	function resize(){
