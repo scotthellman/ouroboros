@@ -11,7 +11,6 @@ game = function(){
 	jQuery(document).ready(function(){
 		$(document).keydown(function(e){
 			var key = (e.keyCode ? e.keyCode : e.charCode);
-			console.log(key);
 			if(key == 37){
 				if(inputDirection != PlayerDirection.RIGHT){
 					inputDirection = PlayerDirection.LEFT;
@@ -488,12 +487,18 @@ game = function(){
 
 				for(var i = 0; i < fill.length; i++){
 					var damage_field = new GameObject(0,0.5,0.5,fill[i][0],fill[i][1]);
+					damage_field.lifetime = 1;
 					damage_field.updater = function(){
-						game_board.removeObject(this.id);
-						delete game_objects[this.id];
+						if(this.lifetime == 0){
+							game_board.removeObject(this.id);
+							delete game_objects[this.id];
+						}
+						else{
+							this.lifetime--;
+						}
 					}
 					damage_field.customCollisionHandler = function(obj){
-						if(obj.health){
+						if(obj.hasOwnProperty('health')){
 							obj.health--;
 						}
 					}
@@ -568,20 +573,21 @@ game = function(){
 
 		//damage field
 		var fields = [];
-		for(var i = -2; i < 3; i++){
-			for(var j = -2; j < 3; j++){
-				if((i != 0 || j != 0) && game_board.isPermeable(x+i,y+j)){
-					var field = new GameObject(120,0.5,1,x+i,y+j);
-					field.permeable = true;
-					field.updater = function(){
-					}
-					game_board.addObject(field.id,field.pos[0],field.pos[1]);
-					fields.push(field);
-				}
-			}
-		}
+		// for(var i = -2; i < 3; i++){
+		// 	for(var j = -2; j < 3; j++){
+		// 		if((i != 0 || j != 0) && game_board.isPermeable(x+i,y+j)){
+		// 			var field = new GameObject(120,0.5,1,x+i,y+j);
+		// 			field.permeable = true;
+		// 			field.updater = function(){
+		// 			}
+		// 			game_board.addObject(field.id,field.pos[0],field.pos[1]);
+		// 			fields.push(field);
+		// 		}
+		// 	}
+		// }
 
 		enemy.updater = function(){
+			console.log(game_board.board[x][y].length);
 			this.color[2] = this.health/10;
 			if(this.health <= 0){
 				for(var i = 0; i < fields.length; i++){
@@ -595,6 +601,10 @@ game = function(){
 				createEnemy(next[0],next[1]);
 				next = valid_spawns[Math.floor(Math.random()*valid_spawns.length)];
 				createEnemy(next[0],next[1]);
+			}
+
+			enemy.customCollisionHandler = function(obj){
+				console.log("collidin with somethin");
 			}
 		}
 
