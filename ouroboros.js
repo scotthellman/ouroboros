@@ -381,6 +381,8 @@ game = function(){
 	}
 
 	GameBoard.prototype.isPermeable = function(x,y){
+		if(x < 0 || y < 0) return false;
+		if(x >= this.board.length || y >= this.board[0].length) return false;
 		for(var i = 0; i < this.board[x][y].length; i++){
 			if(game_objects[this.board[x][y][i]].permeable != true){
 				return false;
@@ -568,7 +570,7 @@ game = function(){
 
 	function createEnemy(x,y){
 		var enemy = new GameObject(120,1,1,x,y);
-		enemy.health = 10;
+		enemy.health = 5;
 		enemy.permeable = true;
 
 		//damage field
@@ -576,7 +578,7 @@ game = function(){
 		for(var i = -2; i < 3; i++){
 			for(var j = -2; j < 3; j++){
 				if((i != 0 || j != 0) && game_board.isPermeable(x+i,y+j)){
-					var field = new GameObject(120,0.5,1,x+i,y+j);
+					var field = new GameObject(120,0.5,0.5,x+i,y+j);
 					field.permeable = true;
 					field.updater = function(){
 					}
@@ -591,9 +593,10 @@ game = function(){
 			}
 		}
 
+		enemy.direction = PlayerDirection.UP;
+
 		enemy.updater = function(){
-			console.log(game_board.board[x][y].length);
-			this.color[2] = this.health/10;
+			this.color[2] = this.health/5;
 			if(this.health <= 0){
 				for(var i = 0; i < fields.length; i++){
 					game_board.removeObject(fields[i].id);
@@ -607,9 +610,41 @@ game = function(){
 				next = valid_spawns[Math.floor(Math.random()*valid_spawns.length)];
 				createEnemy(next[0],next[1]);
 			}
+			else{
+				var next = [this.pos[0] + this.direction[0],this.pos[1] + this.direction[1]];
+				if(game_board.isPermeable(next[0] + this.direction[0],next[1] + this.direction[1]) && Math.random() > 0.05){
+					game_board.move(this.id,next[0],next[1]);
+					this.pos = next;
+					for(var i = 0; i < fields.length; i++){
+						game_board.removeObject(fields[i].id);
+						delete game_objects[fields[i].id];
+					}
+					fields = [];
+					for(var i = -2; i < 3; i++){
+						for(var j = -2; j < 3; j++){
+							if((i != 0 || j != 0) && game_board.isPermeable(this.pos[0]+i,this.pos[1]+j)){
+								var field = new GameObject(120,0.5,0.5,this.pos[0]+i,this.pos[1]+j);
+								field.permeable = true;
+								field.updater = function(){
+								}
+								field.customCollisionHandler = function(obj){
+									if(obj.player_controlled){
+										tail_lifetime--;
+									}
+								}
+								game_board.addObject(field.id,field.pos[0],field.pos[1]);
+								fields.push(field);
+							}
+						}
+					}
+				}
+				else{
+					var choices = ["UP","DOWN","LEFT","RIGHT"];
+					this.direction = PlayerDirection[choices[Math.floor(Math.random()*4)]];
+				}
+			}
 
 			enemy.customCollisionHandler = function(obj){
-				console.log("collidin with somethin");
 			}
 		}
 
