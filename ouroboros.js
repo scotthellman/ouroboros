@@ -552,7 +552,7 @@ game = function(){
 			//sanity check in case we're filling in a bad spot
 			//yes this is a hacky fix
 			if(fill.length > Math.min(100,tail_lifetime*tail_lifetime)){
-				return;
+				return [];
 			}
 		}
 		return fill;
@@ -631,7 +631,7 @@ game = function(){
 			}
 			else{
 				var next = [this.pos[0] + this.direction[0],this.pos[1] + this.direction[1]];
-				if(game_board.isPermeable(next[0] + this.direction[0],next[1] + this.direction[1]) && Math.random() > 0.05){
+				if(game_board.isPermeable(next[0],next[1]) && game_board.isPermeable(next[0] + this.direction[0],next[1] + this.direction[1]) && Math.random() > 0.05){
 					game_board.move(this.id,next[0],next[1]);
 					this.pos = next;
 					for(var i = 0; i < fields.length; i++){
