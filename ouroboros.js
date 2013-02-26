@@ -436,6 +436,13 @@ game = function(){
 		lightwall.updater = function(){
 			lightwall.elapsed += 1;
 			if(tail_lifetime - lightwall.elapsed <= 0){
+				var colliders = game_board.board[this.pos[0]][this.pos[1]];
+				//clean up cached intersections
+				for(var i = 0; i < colliders.length; i++){
+					if(colliders[i].hasOwnProperty('intersection')){
+						colliders[i]['intersection'] = undefined;
+					}
+				}
 				game_board.removeObject(lightwall.id);
 				delete game_objects[lightwall.id];
 			}
@@ -451,9 +458,15 @@ game = function(){
 						//found our turn
 						break;
 					}
+					//check for another intersection
+					if(current.intersection != undefined){
+						this.cached_bend = current.intersection;
+						return;
+					}
 					current = current.previous_tail;
 				}
-				if(count <= 2 || current.direction == this.direction || current == null){
+				//check for 3 because an immediate turn happens 3 back
+				if(count <= 3 || current.direction == this.direction || current == null){
 					this.cached_bend = null;
 				}
 				else{
@@ -483,6 +496,7 @@ game = function(){
 				if(current == null){
 					return;
 				}
+				this.intersection = obj.direction;
 				var position = [this.pos[0]-this.direction[0] - current[0],
 				this.pos[1]-this.direction[1] - current[1]];
 				var fill = floodfill(game_board,position);
@@ -534,6 +548,11 @@ game = function(){
 					}
 					positions.push(candidate);
 				}
+			}
+			//sanity check in case we're filling in a bad spot
+			//yes this is a hacky fix
+			if(fill.length > Math.min(100,tail_lifetime*tail_lifetime)){
+				return;
 			}
 		}
 		return fill;
