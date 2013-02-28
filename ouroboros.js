@@ -11,22 +11,23 @@ game = function(){
 	jQuery(document).ready(function(){
 		$(document).keydown(function(e){
 			var key = (e.keyCode ? e.keyCode : e.charCode);
-			if(key == 37){
+			console.log(key);
+			if(key == 37 || key == 65){
 				if(inputDirection != PlayerDirection.RIGHT){
 					inputDirection = PlayerDirection.LEFT;
 				}
 			}
-			else if(key == 38){
+			else if(key == 38 || key == 87){
 				if(inputDirection != PlayerDirection.DOWN){
 					inputDirection = PlayerDirection.UP;
 				}
 			}
-			else if(key == 39){
+			else if(key == 39 || key == 68){
 				if(inputDirection != PlayerDirection.LEFT){
 					inputDirection = PlayerDirection.RIGHT;
 				}
 			}
-			else if(key == 40){
+			else if(key == 40 || key == 83){
 				if(inputDirection != PlayerDirection.UP){
 					inputDirection = PlayerDirection.DOWN;
 				}
