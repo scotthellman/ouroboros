@@ -36,7 +36,7 @@ game = function(){
 	});
 
 
-	var tail_lifetime = 50;
+	var tail_lifetime = 75;
 	var timestep_length = 50;
 	var game_board;
 
@@ -47,6 +47,12 @@ game = function(){
 
 
 	var player_spawn;
+
+	var enemy_delay = 10;
+
+	var score = 0;
+	var depth = 0;
+	var enemies = 0;
 
 
 	function generateObjectID(){
@@ -154,7 +160,7 @@ game = function(){
 				while(rooms.length == i){
 					var x = valid_xs[Math.floor(Math.random()*valid_xs.length)];
 					var y = valid_ys[Math.floor(Math.random()*valid_ys.length)];
-					var size = Math.min(width-x-1,height-y-1,Math.floor(width/12+Math.random()*width/10));
+					var size = Math.min(width-x-1,height-y-1,Math.floor(width/8+Math.random()*width/10));
 					rooms.push([x,y,size]);
 					valid_xs.splice(x,size);
 					valid_ys.splice(y,size);
@@ -352,15 +358,21 @@ game = function(){
 	GameBoard.prototype.drawToGrid = function(){
 		for(var i = 0; i < this.width; i++){
 			for(var j = 0; j < this.height; j++){
-				if(this.board[i][j].length > 0){
-					if(this.board[i][j][0]==undefined){
-						console.log('sigh');
+				var max_z = -1;
+				for(var k = 0; k < this.board[i][j].length; k++){
+					var obj = game_objects[this.board[i][j][k]];
+					var current_z = 0;
+					if(obj.hasOwnProperty('z')){
+						current_z = obj.z;
 					}
-					var obj = game_objects[this.board[i][j][0]];
+					if(current_z <= max_z){
+						continue;
+					}
+					max_z = current_z;
 					HSVGrid.alterGrid(obj.color[0],obj.color[1],obj.color[2],i,j);
 					HSVGrid.drawGridToCanvas();
 				}
-				else{
+				if(this.board[i][j].length == 0){
 					HSVGrid.alterGrid(0,0,0,i,j);
 					HSVGrid.drawGridToCanvas();
 				}
@@ -433,6 +445,7 @@ game = function(){
 		lightwall.elapsed = 0;
 		lightwall.constricts = true;
 		lightwall.previous_tail = null;
+		lightwall.z = 1;
 		lightwall.updater = function(){
 			lightwall.elapsed += 1;
 			if(tail_lifetime - lightwall.elapsed <= 0){
@@ -558,15 +571,18 @@ game = function(){
 		return fill;
 	}
 
-	function init() {
-		resize();
-		canvas = document.getElementById("game_canvas");
-		HSVGrid.initGrid(canvas,100);
+	function new_level(){
+		if(enemy_delay > 2){
+			enemy_delay--;
+		}
+		enemies = 0;
+		depth++;
 		game_board = BoardCreator.generateRandomBoard(100,100);
 
 		var player = new GameObject(0,0.5,1,player_spawn[0],player_spawn[1]);
 		player.previous_tail = null;
 		player.player_controlled = true;
+		player.z = 2;
 		player.updater = function(){
 			var pos = this.getPosition(game_board);
 			var dontspawn = false;
@@ -582,15 +598,27 @@ game = function(){
 		};
 		game_board.addObject(player.id,player.pos[0],player.pos[1]);
 
-		createEnemy(player_spawn[0]+4,player_spawn[1]+4);
+		for(var i = 0; i < 5 + depth; i++){
+			var spawn = valid_spawns[Math.floor(Math.random()*valid_spawns.length)];
+			createEnemy(spawn[0],spawn[1]);
+		}
+	}
+
+	function init() {
+		resize();
+		canvas = document.getElementById("game_canvas");
+		HSVGrid.initGrid(canvas,100);
+		new_level();
 
 		return setInterval(gameTimestep, timestep_length);
 	}
 
 	function createEnemy(x,y){
+		enemies++;
 		var enemy = new GameObject(120,1,1,x,y);
 		enemy.health = 5;
 		enemy.permeable = true;
+		enemy.time_accumulator = 0;
 
 		//damage field
 		var fields = [];
@@ -617,49 +645,51 @@ game = function(){
 		enemy.updater = function(){
 			this.color[2] = this.health/5;
 			if(this.health <= 0){
+				score++;
+				enemies--;
 				for(var i = 0; i < fields.length; i++){
 					game_board.removeObject(fields[i].id);
 					delete game_objects[fields[i].id];
 				}
 				game_board.removeObject(this.id);
 				delete game_objects[this.id];
-				tail_lifetime += 5;
-				var next = valid_spawns[Math.floor(Math.random()*valid_spawns.length)];
-				createEnemy(next[0],next[1]);
-				next = valid_spawns[Math.floor(Math.random()*valid_spawns.length)];
-				createEnemy(next[0],next[1]);
+				tail_lifetime += 6;
 			}
 			else{
-				var next = [this.pos[0] + this.direction[0],this.pos[1] + this.direction[1]];
-				if(game_board.isPermeable(next[0],next[1]) && game_board.isPermeable(next[0] + this.direction[0],next[1] + this.direction[1]) && Math.random() > 0.05){
-					game_board.move(this.id,next[0],next[1]);
-					this.pos = next;
-					for(var i = 0; i < fields.length; i++){
-						game_board.removeObject(fields[i].id);
-						delete game_objects[fields[i].id];
-					}
-					fields = [];
-					for(var i = -2; i < 3; i++){
-						for(var j = -2; j < 3; j++){
-							if((i != 0 || j != 0) && game_board.isPermeable(this.pos[0]+i,this.pos[1]+j)){
-								var field = new GameObject(120,0.5,0.5,this.pos[0]+i,this.pos[1]+j);
-								field.permeable = true;
-								field.updater = function(){
-								}
-								field.customCollisionHandler = function(obj){
-									if(obj.player_controlled){
-										tail_lifetime--;
+				enemy.time_accumulator++;
+				while(enemy.time_accumulator > enemy_delay){
+					enemy.time_accumulator -= enemy_delay;
+					var next = [this.pos[0] + this.direction[0],this.pos[1] + this.direction[1]];
+					if(game_board.isPermeable(next[0],next[1]) && game_board.isPermeable(next[0] + this.direction[0],next[1] + this.direction[1]) && Math.random() > 0.05){
+						game_board.move(this.id,next[0],next[1]);
+						this.pos = next;
+						for(var i = 0; i < fields.length; i++){
+							game_board.removeObject(fields[i].id);
+							delete game_objects[fields[i].id];
+						}
+						fields = [];
+						for(var i = -2; i < 3; i++){
+							for(var j = -2; j < 3; j++){
+								if((i != 0 || j != 0) && game_board.isPermeable(this.pos[0]+i,this.pos[1]+j)){
+									var field = new GameObject(120,0.5,0.5,this.pos[0]+i,this.pos[1]+j);
+									field.permeable = true;
+									field.updater = function(){
 									}
+									field.customCollisionHandler = function(obj){
+										if(obj.player_controlled){
+											tail_lifetime--;
+										}
+									}
+									game_board.addObject(field.id,field.pos[0],field.pos[1]);
+									fields.push(field);
 								}
-								game_board.addObject(field.id,field.pos[0],field.pos[1]);
-								fields.push(field);
 							}
 						}
 					}
-				}
-				else{
-					var choices = ["UP","DOWN","LEFT","RIGHT"];
-					this.direction = PlayerDirection[choices[Math.floor(Math.random()*4)]];
+					else{
+						var choices = ["UP","DOWN","LEFT","RIGHT"];
+						this.direction = PlayerDirection[choices[Math.floor(Math.random()*4)]];
+					}
 				}
 			}
 
@@ -707,16 +737,19 @@ game = function(){
 	}
 
 	function gameTimestep(){
-		updateObjects();
-		game_board.handleCollisions();
-		game_board.drawToGrid();
-		// for(var i = 0; i < 10; i++){
-		// 	for(var j = 0; j < 10; j++){
-		// 		HSVGrid.alterGrid(360* Math.random(),1,game_board[i][j],j,i);
-		// 	}
-		// }
-		HSVGrid.drawGridToCanvas();
-
+		if(enemies <= 0){
+			game_objects = {};
+			valid_spawns = [];
+			new_level();
+			score += depth;
+		}
+		else{
+			updateObjects();
+			game_board.handleCollisions();
+			game_board.drawToGrid();
+			HSVGrid.drawGridToCanvas();
+			$("#score").text(score);
+		}
 	}
 
 	return {
