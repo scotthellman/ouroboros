@@ -23,16 +23,24 @@
     font-size:1.25em;
     z-index:2;
 }
-#gameinfo{
+#continue{
+    width:100%;
     position:absolute;
-    left:60%;
     top:60%;
+    text-align:center;
+    font-size:1.25em;
+    z-index:2;
+}
+#status{
+    width:100%;
+    position:absolute;
+    text-align:center;
+    top:40%;
     font-size:1.25em;
     z-index:2;
 }
 #gameover{
     position:absolute;
-    left:30%;
     top:40%;
     font-size:4em;
     z-index:2;
@@ -68,6 +76,8 @@ background-size: 100%;
   <body onload="game.init();">
     <div class="game" id="game_area">
         <canvas id="game_canvas"></canvas>
+        <p id="status"></p>
+        <p id="continue"></p>
     </div>
     <p id="score"></p>
     <p id="credits"> By Scott Hellman.</a></p>

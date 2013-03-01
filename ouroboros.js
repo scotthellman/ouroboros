@@ -9,6 +9,25 @@ game = function(){
 	var inputDirection = PlayerDirection.DOWN; 
 
 	jQuery(document).ready(function(){
+		$(document).click(function(e){
+			if(game_over){
+				$("#status").text("");
+				$("#continue").text("");
+				game_over = false;
+				main_menu = true;
+			}
+			else if(main_menu){
+				$("#status").text("");
+				$("#continue").text("");
+				main_menu = false;
+				enemies = 0;
+				depth = 0;
+				score = 0;
+				enemy_delay = 10;
+				tail_lifetime = 60; 
+				new_level();
+			}
+		});
 		$(document).keydown(function(e){
 			var key = (e.keyCode ? e.keyCode : e.charCode);
 			console.log(key);
@@ -37,7 +56,7 @@ game = function(){
 	});
 
 
-	var tail_lifetime = 75;
+	var tail_lifetime = 60;
 	var timestep_length = 50;
 	var game_board;
 
@@ -54,6 +73,8 @@ game = function(){
 	var score = 0;
 	var depth = 0;
 	var enemies = 0;
+	var game_over = false;
+	var main_menu = true;
 
 
 	function generateObjectID(){
@@ -565,7 +586,7 @@ game = function(){
 			}
 			//sanity check in case we're filling in a bad spot
 			//yes this is a hacky fix
-			if(fill.length > Math.min(100,tail_lifetime*tail_lifetime)){
+			if(fill.length > Math.min(300,tail_lifetime*tail_lifetime)){
 				return [];
 			}
 		}
@@ -573,6 +594,15 @@ game = function(){
 	}
 
 	function new_level(){
+		//flush the drawing
+		game_objects = {};
+		valid_spawns = [];
+		for(var i = 0; i < 100; i++){
+			for(var j = 0; j < 100; j++){
+				HSVGrid.alterGrid(0,0,0,i,j);
+			}
+		}
+		game_objects = {};
 		if(enemy_delay > 2){
 			enemy_delay--;
 		}
@@ -608,15 +638,13 @@ game = function(){
 	function init() {
 		resize();
 		canvas = document.getElementById("game_canvas");
-		HSVGrid.initGrid(canvas,100);
-		new_level();
 
 		return setInterval(gameTimestep, timestep_length);
 	}
 
 	function createEnemy(x,y){
 		enemies++;
-		var enemy = new GameObject(120,1,1,x,y);
+		var enemy = new GameObject(60,1,1,x,y);
 		enemy.health = 5;
 		enemy.permeable = true;
 		enemy.time_accumulator = 0;
@@ -626,7 +654,7 @@ game = function(){
 		for(var i = -2; i < 3; i++){
 			for(var j = -2; j < 3; j++){
 				if((i != 0 || j != 0) && game_board.isPermeable(x+i,y+j)){
-					var field = new GameObject(120,0.5,0.5,x+i,y+j);
+					var field = new GameObject(60,0.5,0.5,x+i,y+j);
 					field.permeable = true;
 					field.updater = function(){
 					}
@@ -672,7 +700,7 @@ game = function(){
 						for(var i = -2; i < 3; i++){
 							for(var j = -2; j < 3; j++){
 								if((i != 0 || j != 0) && game_board.isPermeable(this.pos[0]+i,this.pos[1]+j)){
-									var field = new GameObject(120,0.5,0.5,this.pos[0]+i,this.pos[1]+j);
+									var field = new GameObject(60,0.5,0.5,this.pos[0]+i,this.pos[1]+j);
 									field.permeable = true;
 									field.updater = function(){
 									}
@@ -724,6 +752,7 @@ game = function(){
 		canvas.width = new_width;
 		canvas.height = new_height;
 		game_area.style.fontSize = (new_width / 800) + 'em';
+		HSVGrid.initGrid(canvas,100);
 	}
 
 	function updateObjects(){
@@ -738,18 +767,31 @@ game = function(){
 	}
 
 	function gameTimestep(){
-		if(enemies <= 0){
-			game_objects = {};
-			valid_spawns = [];
-			new_level();
-			score += depth;
+		if(game_over){
+			canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
+			$("#status").text("Game Over");
+			$("#continue").text("Click to continue");
+		}
+		else if(main_menu){
+			canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
+			$("#status").text("Arrow Keys or WASD to move. Surround enemies! Collisions don't hurt, enemies do.")
+			$("#continue").text("Click to start");
 		}
 		else{
-			updateObjects();
-			game_board.handleCollisions();
-			game_board.drawToGrid();
-			HSVGrid.drawGridToCanvas();
-			$("#score").text(score);
+			if(tail_lifetime < 10){
+				game_over = true;
+			}
+			if(enemies <= 0){
+				new_level();
+				score += depth;
+			}
+			else{
+				updateObjects();
+				game_board.handleCollisions();
+				game_board.drawToGrid();
+				HSVGrid.drawGridToCanvas();
+				$("#score").text(score);
+			}
 		}
 	}
 
